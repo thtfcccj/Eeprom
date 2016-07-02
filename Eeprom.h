@@ -31,8 +31,7 @@
 ***************************************************************************/
 
 //-----------------------------初始化函数---------------------------------
-//void Eeprom_Init(void);
-#define Eeprom_Init() do{}while(0) //绝大多数应用实现为空
+void Eeprom_Init(void);
 
 //---------------------------读取Eeprom数据---------------------------------
 void Eeprom_Rd(EepromAdr_t Adr,   //Eerpom中的存取位置
@@ -43,6 +42,12 @@ void Eeprom_Rd(EepromAdr_t Adr,   //Eerpom中的存取位置
 void Eeprom_Wr(EepromAdr_t Adr,   //Eerpom中的存取位置
                const void *pVoid, //被写数据的起始位置
                EepromLen_t Len);  //写入长度
+
+//--------------------------Eeprom写常量数据--------------------------
+//此函数为附加功能, 部分驱动实现
+void Eeprom_WrConst(EepromAdr_t Adr,   //Eerpom中的存取位置
+                  unsigned char Data,  //常量数据
+                  EepromLen_t Len);    //写入长度
 
 /***************************************************************************
                     静态回调函数声明(或直接宏实现)部分
