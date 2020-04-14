@@ -211,8 +211,8 @@ static void _WrBack(void)
 static void _FlashToBuf(EepromAdr_t Adr)
 {
   Adr &= ~0x07; //保证8字对齐方便写Flash时提高效率
-  if((Adr + EEPROM_BUF_SIZE) > EEPROM_SIZE){//最后超限了，直接缓冲最后数据
-    Adr = EEPROM_SIZE - EEPROM_BUF_SIZE;
+  if((Adr + EEPROM_BUF_SIZE) > (EEPROM_SIZE - _HEADER_SIZE)){//最后超限了，直接缓冲最后数据
+    Adr = (EEPROM_SIZE - _HEADER_SIZE) - EEPROM_BUF_SIZE;
   }
   //找到基址
   unsigned long FlashBase; 
