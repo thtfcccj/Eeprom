@@ -15,17 +15,17 @@
 //--------------------------宏默认值-------------------------------------
 #define _HEADER_SIZE        8      //定义数据头大小,固定为8以保证8字节对齐和校验
 
-//默认按STM32F4x 1M容量，128K扇区配置
+//默认按64k容量，512byte扇区配置
 #ifndef EEPROM_WR_BACK_OV   //回写时间默认单位256ms
-  #define EEPROM_WR_BACK_OV  (10 * 4)
+  #define EEPROM_WR_BACK_OV  (5 * 4)
 #endif
 
 #ifndef EEPROM_BASE1                 //第一个EEPROM的页起始地址
-  #define EEPROM_BASE1  (0x10000 - 0x3ff)  
+  #define EEPROM_BASE1  (0x10000 - 0x400)  
 #endif
 
 #ifndef EEPROM_BASE2                 //第二个EEPROM的页起始地址
-  #define EEPROM_BASE2  (0x10000 - 0x1ff)  
+  #define EEPROM_BASE2  (0x10000 - 0x200)  
 #endif
 
 #ifndef EEPROM_SIZE
