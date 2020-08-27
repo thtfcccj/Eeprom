@@ -30,15 +30,15 @@
   #define EEPROM_BASE2  (0x10000 - 0x200)  
 #endif
 
-//FLASH分页个数,可用多个连续页组成一个EEPROM_SIZE,满足：
+//FLASH分页个数,可用多个连续页组成一个EEPROM_SIZE,此值满足：
 //((EEPROM_SIZE + _HEADER_SIZE) / EEPROM_PAGE_COUNT) 应正好对应FLASH的一页
-
 #ifndef EEPROM_PAGE_COUNT  
   #define EEPROM_PAGE_COUNT     1     //默认只有一页
 #endif
 
+//实际EEPROM的页大小,需为扇区大小-_HEADER_SIZE
 #ifndef EEPROM_SIZE
-  #define EEPROM_SIZE  (512 - _HEADER_SIZE)       //实际EEPROM的页大小,需为扇区大小-_HEADER_SIZE
+  #define EEPROM_SIZE  (512 - _HEADER_SIZE)       
 #endif
 
 struct _Eeprom{ //管理器
@@ -59,7 +59,6 @@ struct _Eeprom{ //管理器
 struct _Eeprom  _Eeprom;
 
 #define  _PAGE_SIZE   ((EEPROM_SIZE + _HEADER_SIZE) / EEPROM_PAGE_COUNT) //应正好为FLASH的一页
-
 /*******************************************************************************
                            初始化与格式化及相关公共函数
 ********************************************************************************/
