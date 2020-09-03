@@ -18,7 +18,7 @@
 #define _HEADER_SIZE        8      //定义数据头大小,固定为8以保证8字节对齐和校验
 
 #ifndef EEPROM_WR_BACK_OV   //回写时间默认单位256ms
-  #define EEPROM_WR_BACK_OV  (5 * 4)
+  #define EEPROM_WR_BACK_OV  (15 * 4)
 #endif
 
 #ifndef EEPROM_BASE1                 //第一个EEPROM的页起始地址
