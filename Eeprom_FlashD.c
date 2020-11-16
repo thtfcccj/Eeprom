@@ -22,8 +22,10 @@
 
 #include "Eeprom.h"
 #include "Flash.h"              //Flash标准函数接口
+#include "EepromInner.h"       
 #include <string.h>
 //#include "IoCtrl.h"             //仅调用WDT_Week();
+
 
 //--------------------------宏默认值-------------------------------------
 //默认按STM32F4x 1M容量，128K扇区配置
@@ -48,6 +50,14 @@
 #endif
 
 #define _HEADER_SIZE        8      //定义数据头大小,固定为8以保证8字节对齐和校验
+
+//定义内部EEPROM大小，此函数内部使用
+#ifdef EEPROM_LAST_RCV_SIZE  
+  #define _IN_EEPROM_SIZE (EEPROM_SIZE - EEPROM_LAST_RCV_SIZE) //去除预留
+#else
+  #define _IN_EEPROM_SIZE EEPROM_SIZE
+#endif
+
 
 struct _Eeprom{ //管理器
   //页缓冲
@@ -191,19 +201,27 @@ static void _WrBack(void)
   OffAdr += EEPROM_BUF_SIZE;  //偏移更新至下次
   
   //3. 将缓冲区地址后面的Flash原有数据写入新页面
-  if(OffAdr < EEPROM_SIZE){
+  if(OffAdr < _IN_EEPROM_SIZE){
     _WrFlash(CurNew,
              OffAdr, 
              (unsigned char*)(OldFlashBase + OffAdr),
-             EEPROM_SIZE - OffAdr);
+             _IN_EEPROM_SIZE - OffAdr);
   }
-  //4.最新定时器累加并写入(未考虑计数到底回环到0情况)
+  //4.末尾预留空间时通报重新写入
+  #ifdef EEPROM_LAST_RCV_SIZE 
+    _WrFlash(CurNew,
+             _IN_EEPROM_SIZE, 
+             (unsigned char*)(OldFlashBase + _IN_EEPROM_SIZE),
+             Eeprom_cbGetWrBackLastRcvCount());
+  #endif
+  
+  //5.最新定时器累加并写入(未考虑计数到底回环到0情况)
   _Eeprom.Counter[0]++;
   _Eeprom.Counter[1] = 0 - _Eeprom.Counter[0];//取反作为校验码写入
   _WrFlash(CurNew, 0, _Eeprom.Counter, 8);//写数据头
   //注：忽略了对数据头写入的校验！
   
-  //5.最后切换到新页以完成(注: 此时缓冲区里的数据仍然是新的并有效)
+  //6.最后切换到新页以完成(注: 此时缓冲区里的数据仍然是新的并有效)
   _Eeprom.Page2New = CurNew;
 }
 
@@ -211,8 +229,8 @@ static void _WrBack(void)
 static void _FlashToBuf(EepromAdr_t Adr)
 {
   Adr &= ~0x07; //保证8字对齐方便写Flash时提高效率
-  if((Adr + EEPROM_BUF_SIZE) > (EEPROM_SIZE - _HEADER_SIZE)){//最后超限了，直接缓冲最后数据
-    Adr = (EEPROM_SIZE - _HEADER_SIZE) - EEPROM_BUF_SIZE;
+  if((Adr + EEPROM_BUF_SIZE) > (_IN_EEPROM_SIZE - _HEADER_SIZE)){//最后超限了，直接缓冲最后数据
+    Adr = (_IN_EEPROM_SIZE - _HEADER_SIZE) - EEPROM_BUF_SIZE;
   }
   //找到基址
   unsigned long FlashBase; 
@@ -341,8 +359,8 @@ void Eeprom_Rd(EepromAdr_t Adr,
 //---------------------------得到用户指针从缓冲区-------------------------------
 //考虑到存在一个结构中，写整个数据，但读一个数据情况，故采取部分读方式
 //返回NULL: 不在缓冲区,-1: 部分命中，否则返回数据指针
-static const unsigned char *_pEerpomFromBuf(EepromAdr_t Adr,
-                                            EepromLen_t Len)
+unsigned char *_pEerpomFromBuf(EepromAdr_t Adr,
+                                 EepromLen_t Len)
 
 {
   if(Adr < _Eeprom.BufBase){//起始不对
@@ -367,7 +385,7 @@ static const unsigned char *_pEerpomFromBuf(EepromAdr_t Adr,
 const unsigned char *Eeprom_pGetRd(EepromAdr_t Adr, EepromLen_t Len)
 {
   //1. 先从缓冲区获得数据
-  const unsigned char *pData = _pEerpomFromBuf(Adr, Len);
+  unsigned char *pData = _pEerpomFromBuf(Adr, Len);
   if(pData == (unsigned char *)-1){ //部分命中时
     if(_Eeprom.WrBackTimer){//有新数据时，需回写原有缓冲区数据防止数据为一半
       _WrBack();
@@ -385,10 +403,10 @@ const unsigned char *Eeprom_pGetRd(EepromAdr_t Adr, EepromLen_t Len)
 //-------------------------由Eeprom基址转换为可写指针------------------
 //可用于数据的读写，若只读不更改，应使用Eeprom_pGetRd()以节省写入次数和效率
 //建议以结构方式进行以提高效率
-const unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
+unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
 {
   //1. 先从缓冲区获得数据
-  const unsigned char *pData = _pEerpomFromBuf(Adr, Len);
+  unsigned char *pData = _pEerpomFromBuf(Adr, Len);
   if((pData != NULL) && (pData != (unsigned char *)-1)){ //命中了
     if(_Eeprom.BufWrCount != 255) _Eeprom.BufWrCount++; //缓冲区内写累加
     _Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; //自动回写
@@ -445,6 +463,20 @@ void Eeprom_ForceWrBufAndRestart(void)
   _WrBack();  
   while(1);
 }
+
+
+//------------------------------得到末次写入位置--------------------------------
+#ifdef EEPROM_LAST_RCV_SIZE //末尾预留空间时
+//返回保留空间的硬件(如flash)基址
+unsigned long Eeprom_GetLastRcvHwBase(void)
+{
+  if(_Eeprom.Page2New)
+    return EEPROM_BASE2 + _IN_EEPROM_SIZE;
+  else
+    return EEPROM_BASE1 + _IN_EEPROM_SIZE; 
+}
+#endif  
+
 
   
 
