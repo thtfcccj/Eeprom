@@ -95,7 +95,7 @@ static void _UpdateCounterAndNew(void)
     }
   }
   else{//两页均有数据,比较大小(暂没校验是否累加器有问题)
-    if(Counter < Counter2){ //在第二页
+    if((Counter2 != 0xffffffff) && (Counter < Counter2)){ //在第二页
       Counter = Counter2;
       Page2New = 1;
     }
