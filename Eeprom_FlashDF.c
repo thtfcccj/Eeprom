@@ -36,7 +36,7 @@
   #define EEPROM_PAGE_COUNT     1     //默认只有一页
 #endif
 
-//实际EEPROM的页大小,需为扇区大小-_HEADER_SIZE
+//实际EEPROM的页大小,EEPROM容量,需为扇区大小-_HEADER_SIZE(外部定义需-8)
 #ifndef EEPROM_SIZE
   #define EEPROM_SIZE  (512 - _HEADER_SIZE)       
 #endif
