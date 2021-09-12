@@ -5,6 +5,9 @@
 ****************************************************************************/
 #ifndef _EEPROM_H
 #define _EEPROM_H
+#ifdef SUPPORT_EX_PREINCLUDE//不支持Preinlude時
+  #include "Preinclude.h"
+#endif
 
 //读写块实现(块地址,E2地址,读写长度),uiaddr_e2的类型可根据情况确定
 #ifndef EepromAdr_t

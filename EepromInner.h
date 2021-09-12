@@ -7,6 +7,9 @@
 
 #ifndef _EEPROM_INNER_H
 #define _EEPROM_INNER_H
+#ifdef SUPPORT_EX_PREINCLUDE//不支持Preinlude時
+  #include "Preinclude.h"
+#endif
 
 //---------------------------初始化函数---------------------------------
 void Eeprom_Init(void);
