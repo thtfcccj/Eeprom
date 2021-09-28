@@ -56,7 +56,7 @@ struct _Eeprom{ //管理器
   signed char HeaderErr;  
 };
 
-struct _Eeprom  _Eeprom;
+struct _Eeprom  Eeprom;
 
 #define  _PAGE_SIZE   ((EEPROM_SIZE + _HEADER_SIZE) / EEPROM_PAGE_COUNT) //应正好为FLASH的一页
 /*******************************************************************************
@@ -86,18 +86,18 @@ static void _UpdateCounterAndNew(void)
   if(Page2New) Counter2 = *(unsigned long*)(EEPROM_BASE2 + 4);
   else Counter2 = *(unsigned long*)(EEPROM_BASE1 + 4);
   if(Counter2 != (0 - Counter)) //校验错误
-    _Eeprom.HeaderErr = -1;
-  else _Eeprom.HeaderErr = 0; //正确了
+    Eeprom.HeaderErr = -1;
+  else Eeprom.HeaderErr = 0; //正确了
   
-  _Eeprom.Counter[0] = Counter;
-  _Eeprom.Counter[1] = 0 - _Eeprom.Counter[0];//取反以写入
-  _Eeprom.Page2New = Page2New;
+  Eeprom.Counter[0] = Counter;
+  Eeprom.Counter[1] = 0 - Eeprom.Counter[0];//取反以写入
+  Eeprom.Page2New = Page2New;
   
   //最后缓冲全数据至缓冲区
   if(Page2New) 
-    memcpy(_Eeprom.Buf, (const char*)(EEPROM_BASE2 + _HEADER_SIZE), EEPROM_SIZE);
+    memcpy(Eeprom.Buf, (const char*)(EEPROM_BASE2 + _HEADER_SIZE), EEPROM_SIZE);
   else
-    memcpy(_Eeprom.Buf, (const char*)(EEPROM_BASE1 + _HEADER_SIZE), EEPROM_SIZE);
+    memcpy(Eeprom.Buf, (const char*)(EEPROM_BASE1 + _HEADER_SIZE), EEPROM_SIZE);
 }
 
 //--------------------将数据写入对应Flash中----------------------------
@@ -154,8 +154,8 @@ static void _Format(unsigned char IsPage2)
 //---------------------------初始化函数---------------------------------
 void Eeprom_Init(void)
 {
-  _Eeprom.WrBackTimer = 0;                    //不需要回写
-  _Eeprom.BufWrCount = 0;             //计数器清零
+  Eeprom.WrBackTimer = 0;                    //不需要回写
+  Eeprom.BufWrCount = 0;             //计数器清零
   _UpdateCounterAndNew();               //更新计数器与新页标志
 }
 
@@ -165,6 +165,15 @@ void Eeprom_Format(void)
 
 }
 
+//-----------------------------缓存复位---------------------------------
+//全部恢复为0xff
+void Eeprom_BufReset(void)
+{
+	memset(Eeprom.Buf,0xff, EEPROM_SIZE);
+}
+
+
+
 /*******************************************************************************
                                 写数据相关
 ********************************************************************************/
@@ -172,13 +181,13 @@ void Eeprom_Format(void)
 static void _WrBack(void)
 {
   //复位回写相关
-  _Eeprom.WrBackTimer = 0; 
-  _Eeprom.BufWrCount = 0;  
+  Eeprom.WrBackTimer = 0; 
+  Eeprom.BufWrCount = 0;  
   
   //准备1：先找到待写入的新页面与老基址
   unsigned char CurNew;
   unsigned long OldFlashBase; 
-  if(_Eeprom.Page2New){
+  if(Eeprom.Page2New){
     OldFlashBase = EEPROM_BASE2;    
     CurNew = 0;//正好相反
   }
@@ -187,7 +196,7 @@ static void _WrBack(void)
     CurNew = 1;
   }
   //准备2：无条件确保缓冲区里的值是新的
-  if(!memcmp((void*)(OldFlashBase + _HEADER_SIZE), _Eeprom.Buf, EEPROM_SIZE))
+  if(!memcmp((void*)(OldFlashBase + _HEADER_SIZE), Eeprom.Buf, EEPROM_SIZE))
     return; //没有更新
   
   //准备3：先格式化待写入页面  
@@ -196,17 +205,17 @@ static void _WrBack(void)
   //1写数据区
   unsigned long OffAdr = _HEADER_SIZE; //当前地址偏移
   //将缓冲的新数据写入(_FlashToBuf()时已确保不超限)
-  _WrFlash(CurNew, OffAdr, _Eeprom.Buf, EEPROM_SIZE);
+  _WrFlash(CurNew, OffAdr, Eeprom.Buf, EEPROM_SIZE);
   OffAdr += EEPROM_SIZE;  //偏移更新至下次
   
   //2.最新定时器累加并写入(未考虑计数到底回环到0情况)
-  _Eeprom.Counter[0]++;
-  _Eeprom.Counter[1] = 0 - _Eeprom.Counter[0];//取反作为校验码写入
-  _WrFlash(CurNew, 0, _Eeprom.Counter, _HEADER_SIZE);//写数据头
+  Eeprom.Counter[0]++;
+  Eeprom.Counter[1] = 0 - Eeprom.Counter[0];//取反作为校验码写入
+  _WrFlash(CurNew, 0, Eeprom.Counter, _HEADER_SIZE);//写数据头
   //注：忽略了对数据头写入的校验！
   
   //3.最后切换到新页以完成(注: 此时缓冲区里的数据仍然是新的并有效)
-  _Eeprom.Page2New = CurNew;
+  Eeprom.Page2New = CurNew;
 }
 
 //---------------------------写Eeprom数据---------------------------------
@@ -218,10 +227,10 @@ void Eeprom_Wr(EepromAdr_t Adr,
   // (略)
   
   //先写到缓冲区
-  memcpy(&_Eeprom.Buf[Adr], pVoid, Len);
+  memcpy(&Eeprom.Buf[Adr], pVoid, Len);
   
   //启动自动回写
-  _Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; 
+  Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; 
   
 }
 /*******************************************************************************
@@ -236,14 +245,14 @@ void Eeprom_Rd(EepromAdr_t Adr,
   //检查数据区安全性
   // (略)
   
-  memcpy(pVoid, &_Eeprom.Buf[Adr], Len); //直接在缓冲区里了
+  memcpy(pVoid, &Eeprom.Buf[Adr], Len); //直接在缓冲区里了
 }
 
 //-------------------------由Eeprom基址转换为只读指针------------------
 //可用于只读数据，建议以结构方式进行以提高效率
 const unsigned char *Eeprom_pGetRd(EepromAdr_t Adr, EepromLen_t Len)
 {
-  return  &_Eeprom.Buf[Adr];   //直接在缓冲区里了
+  return  &Eeprom.Buf[Adr];   //直接在缓冲区里了
 }
 
 //-------------------------由Eeprom基址转换为可写指针------------------
@@ -251,7 +260,7 @@ const unsigned char *Eeprom_pGetRd(EepromAdr_t Adr, EepromLen_t Len)
 //建议以结构方式进行以提高效率
 const unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
 {
-  return  &_Eeprom.Buf[Adr];   //直接在缓冲区里了
+  return  &Eeprom.Buf[Adr];   //直接在缓冲区里了
 }
 
 //-------------------------任务函数---------------------------------
@@ -259,14 +268,14 @@ const unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
 void Eeprom_Task(void)
 {
   //防止用户频繁调用时复位回写，此机制用于强制回写
-  if(_Eeprom.BufWrCount == 255){
+  if(Eeprom.BufWrCount == 255){
     _WrBack();
     return;
   }
   //自动回写计数
-  if(!_Eeprom.WrBackTimer) return; //没有回写需求
-  _Eeprom.WrBackTimer--;
-  if(_Eeprom.WrBackTimer) return;  //等待过程中
+  if(!Eeprom.WrBackTimer) return; //没有回写需求
+  Eeprom.WrBackTimer--;
+  if(Eeprom.WrBackTimer) return;  //等待过程中
   //时间到执行回写
   _WrBack();
 }
@@ -275,7 +284,7 @@ void Eeprom_Task(void)
 //有此功能时将返回，否则返回为0
 unsigned long Eeprom_GetWrCount(void)
 {
-  return _Eeprom.Counter[0];
+  return Eeprom.Counter[0];
 }
 
 //--------------------------强制回写缓冲区数据---------------------------------
