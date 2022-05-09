@@ -253,13 +253,13 @@ const unsigned char *Eeprom_pGetRd(EepromAdr_t Adr, EepromLen_t Len)
 unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
 {
   #ifdef SUPPORT_EEPROM_WR_BUF
-    _Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; //启动自动强制回写
     if(_WrBuf.Len){//有数据缓冲时
       if((Adr >= _WrBuf.EepromAdr) && //起始对了
          ((Adr + Len) <= (_WrBuf.EepromAdr + SUPPORT_EEPROM_WR_BUF))){//结束也对了
          //命中了
          if(_Eeprom.BufWrCount != 255) _Eeprom.BufWrCount++; //缓冲区内写累加  
          //直接返回缓冲区
+         _Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; //启动自动强制回写
          return ((unsigned char *)_WrBuf.Buf) + (Adr - _WrBuf.EepromAdr);   
       }
       //未命中或部分命中，先写入以释放EEPROM数据
@@ -270,6 +270,7 @@ unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
     memcpy(_WrBuf.Buf, pRd, SUPPORT_EEPROM_WR_BUF);
     _WrBuf.EepromAdr = Adr;
     _WrBuf.Len = SUPPORT_EEPROM_WR_BUF;
+    _Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; //启动自动强制回写
     return (unsigned char *)_WrBuf.Buf; 
   #else
     return NULL;  //不支持
