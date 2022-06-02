@@ -220,28 +220,28 @@ const unsigned char *Eeprom_pGetRd(EepromAdr_t Adr, EepromLen_t Len)
   //先从当前EEPROM缓冲区里找
   #ifdef SUPPORT_EEPROM_WR_BUF
     if(_WrBuf.Len){//有数据缓冲时
-      if((Adr >= _WrBuf.EepromAdr) && //起始对了
-         ((Adr + Len) <= (_WrBuf.EepromAdr + SUPPORT_EEPROM_WR_BUF))){//结束也对了
-         //命中了直接返回缓冲区
-         return ((unsigned char *)_WrBuf.Buf) + (Adr - _WrBuf.EepromAdr);   
+      EepromAdr_t EndAdr = _WrBuf.EepromAdr + SUPPORT_EEPROM_WR_BUF;
+      if((Adr >= _WrBuf.EepromAdr) && (Adr < EndAdr)){//起始在范围
+        if((Adr + Len) <= EndAdr){//整组在范围了，命中了直接返回缓冲区
+         return ((unsigned char *)_WrBuf.Buf) + (Adr - _WrBuf.EepromAdr); 
+        }
+        else{//部分命中时，先将现有数据入EEPROM缓冲区中
+          Eeprom_Wr(_WrBuf.EepromAdr, _WrBuf.Buf, _WrBuf.Len);//可能在缓冲中
+          _WrBuf.Len = 0;          
+        }
       }
-      //部分命中时，先将现有数据入EEPROM缓冲区中
-      if((Adr < _WrBuf.EepromAdr) && ((Adr + Len) > _WrBuf.EepromAdr) ||
-         (Adr < (_WrBuf.EepromAdr + SUPPORT_EEPROM_WR_BUF))){
-        Eeprom_Wr(_WrBuf.EepromAdr, _WrBuf.Buf, _WrBuf.Len);//可能在缓冲中
-        _WrBuf.Len = 0;
-       }
     }
   #endif
-  //有缓冲时, 检查EEPOM缓冲区数据若与待读入数据重合，则需要提前将缓冲区数据写进去
+  //检查EEPOM缓冲区：命中时返回缓冲区，部分命中时需回写再读
   if(_Eeprom.WrBackTimer && (_Eeprom.CurPage != 0xFF)){//
     EepromAdr_t BufBase = _Eeprom.CurPage * FLASH_PAGE_SIZE;
-    if(Adr < BufBase){//起始不对
-      EepromAdr_t EndPos = Adr + Len;
-      if(EndPos > BufBase) _WrBack(); //结束位置重合需回写
+    EepromAdr_t BufEnd = BufBase + FLASH_PAGE_SIZE;
+    if((Adr >= BufBase) && (Adr < BufEnd)){//起始对了
+      if((Adr + Len) <= BufEnd){//整组在范围了
+        return ((unsigned char *)_Eeprom.Buf) + (Adr % FLASH_PAGE_SIZE); 
+      }
+      else _WrBack();//部分命中时,先回写,然后读只读区域
     }
-    EepromAdr_t OffsetAdr = Adr - BufBase;//得到待写入数据在缓冲区内的偏移
-    if(OffsetAdr < FLASH_PAGE_SIZE) _WrBack();//在缓冲区内了需回写
   }
   
   return (const unsigned char *)(EEPROM_BASE +Adr);
@@ -254,9 +254,8 @@ unsigned char *Eeprom_pGetWr(EepromAdr_t Adr, EepromLen_t Len)
 {
   #ifdef SUPPORT_EEPROM_WR_BUF
     if(_WrBuf.Len){//有数据缓冲时
-      if((Adr >= _WrBuf.EepromAdr) && //起始对了
-         ((Adr + Len) <= (_WrBuf.EepromAdr + SUPPORT_EEPROM_WR_BUF))){//结束也对了
-         //命中了
+      EepromAdr_t EndAdr = _WrBuf.EepromAdr + SUPPORT_EEPROM_WR_BUF;
+      if((Adr >= _WrBuf.EepromAdr) && ((Adr + Len) <= EndAdr)){//全在范围，命中了
          if(_Eeprom.BufWrCount != 255) _Eeprom.BufWrCount++; //缓冲区内写累加  
          //直接返回缓冲区
          _Eeprom.WrBackTimer = EEPROM_WR_BACK_OV; //启动自动强制回写
