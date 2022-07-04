@@ -119,6 +119,7 @@ static void _WrBack(void)
 {
   #ifdef SUPPORT_EEPROM_WR_BUF
     if(_WrBuf.Len){//有需要写入时
+      if(!_Eeprom.WrBackTimer) _Eeprom.WrBackTimer = 1;//任务调用时用于回写
       Eeprom_Wr(_WrBuf.EepromAdr, _WrBuf.Buf, _WrBuf.Len);//可能在缓冲中
       _WrBuf.Len = 0;
       //继续可强制写入
