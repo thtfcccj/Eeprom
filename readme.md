@@ -16,16 +16,16 @@
 * **大中型项目时**: 区分组件层，放在“项目源文件目录\components\Eeprom”下，若项目很多，且同一项目也有较多实现时，可将具体实现文件放在此目录“项目名称”目录下，以实现分类存放。
 
 ####现支持的EEPROM：
-  *  AT24全系列(使用I2c标准接口)  Eeprom_AT24
-  *  PIC 8位MCU内部
-  *  AVR 8位MCU内部
-    + 16系列：Eeprom_PIC
-   + 18系列：Eeprom_Pic16F18
-  * 使用MCU的Flash模拟的EEPOM(使用Flash标准接口),主要有：
-    + 单页flash实现 Eeprom_FlashS
-    + 跨多页flash实现: Eeprom_FlashM
-    + 双页大容量Falsh实现(两页相同，但交叉存储)  Eeprom_FlashD
-    注： Flash实现时，外部需调用 EepromInner.h实现相关功能
+  *  Eeprom_AT24： AT24全系列(使用I2c标准接口)  
+  *  Eepom_AVR:   AVR 8位MCU内部
+  *  Eepom_PIC:   PIC 8位中端19系列MCU内部
+  *  Eepom_PIC16F18:   PIC 8位中端18系列MCU内部
+  *  Eepom_FlashXXX: 使用MCU的Flash模拟的EEPOM(使用Flash标准接口),主要有：
+    + Eeprom_FlashS: 使用单页flash时的实现(注意保存期间不应掉电) 
+    + Eeprom_FlashM: 跨多页flash实现(注意保存期间不应掉电) 
+    + Eeprom_FlashD: 双页大容量Falsh实现(两页相同，但交叉存储以实现冗余，可提高可靠性)  
+    + Eeprom_FlashDS: 使用内部的Flash双页小空量-全RAM缓冲时实现(交叉存储,全部数据缓存至RAM)
+  * EepomInner.h: 操作Eepom_Flash实现时，提供的内部辅助函数等,外部需调用其实现相关功能。
    
 -------------------------------------------------------------------------------
 
